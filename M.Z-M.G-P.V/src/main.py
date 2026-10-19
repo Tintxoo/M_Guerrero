@@ -1,0 +1,14 @@
+from persistencia.crear_db import crear_tablas
+from presentacion.menu_principal import iniciar_menu_principal
+
+def main():
+    try:
+        crear_tablas()
+    except Exception as error:
+        raise SystemExit(f"No fue posible inicializar la base de datos: {error}") from error
+
+    iniciar_menu_principal()
+
+if __name__ == "__main__":
+    main()
+
