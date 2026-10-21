@@ -211,19 +211,70 @@ def convertir_decimal(
         raise ValueError(f"El valor no puede ser menor que {minimo}.")
     return numero
 
+def leer_fecha(
+    mensaje: str,
+    *,
+    obligatorio: bool = True,
+    permitir_futuro: bool = False,
+    anos_max_antiguedad: int = 80,
+    fecha_min: date | None = None,
+    fecha_max: date | None = None,
+) -> date | None:
+    """Lee y valida una fecha ingresada por consola en formato AAAA-MM-DD.
 
-def leer_fecha(mensaje: str, *, obligatorio: bool = True) -> date | None:
+    Por defecto: - No permite fechas futuras (permitir_futuro=False). - No
+    permite fechas de más de 80 años de antigüedad.
+    """
+    hoy = date.today()
+
+    # Configuración de fecha máxima (hoy por defecto si no se permite futuro)
+    if fecha_max is None and not permitir_futuro:
+        fecha_max = hoy
+
+    # Configuración de fecha mínima (80 años atrás por defecto)
+    if fecha_min is None and anos_max_antiguedad is not None:
+        try:
+            fecha_min = hoy.replace(year=hoy.year - anos_max_antiguedad)
+        except ValueError:  # Manejo para años bisiestos (29 de febrero)
+            fecha_min = hoy.replace(
+                year=hoy.year - anos_max_antiguedad, day=28
+            )
+
     while True:
         valor = input(mensaje).strip()
+
+        # Entrada opcional vacía
         if not valor and not obligatorio:
             return None
+
+        # Formato de texto AAAA-MM-DD
         if not _PATRON_FECHA.fullmatch(valor):
             print("Use el formato AAAA-MM-DD, por ejemplo 2026-10-13.")
             continue
+
+        # Existencia en el calendario
         try:
-            return date.fromisoformat(valor)
+            fecha_ingresada = date.fromisoformat(valor)
         except ValueError:
             print("La fecha indicada no existe en el calendario.")
+            continue
+
+        # Validación de fecha demasiado antigua
+        if fecha_min is not None and fecha_ingresada < fecha_min:
+            print(
+                f"La fecha no puede ser anterior a {fecha_min.isoformat()} "
+                f"(máximo {anos_max_antiguedad} años de antigüedad)."
+            )
+            continue
+
+        # Validación de fecha futura / posterior
+        if fecha_max is not None and fecha_ingresada > fecha_max:
+            print(
+                f"La fecha no puede ser posterior a {fecha_max.isoformat()}."
+            )
+            continue
+
+        return fecha_ingresada
 
 
 def leer_opcion(mensaje: str, opciones: set[str]) -> str:
