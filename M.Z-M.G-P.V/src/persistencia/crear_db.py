@@ -46,6 +46,16 @@ def crear_tablas():
                     ON DELETE RESTRICT
             )
         """
+        sql_usuario = """
+            CREATE TABLE IF NOT EXISTS usuario (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre_usuario TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                empleado_id INTEGER NOT NULL UNIQUE,
+                FOREIGN KEY (empleado_id) REFERENCES empleado(id)
+                    ON DELETE CASCADE
+            )
+        """
     else:
         sql_departamento = """
             CREATE TABLE IF NOT EXISTS departamento (
@@ -90,9 +100,19 @@ def crear_tablas():
                     ON DELETE RESTRICT
             )
         """
+        sql_usuario = """
+            CREATE TABLE IF NOT EXISTS usuario (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                nombre_usuario VARCHAR(40) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                empleado_id INT NOT NULL UNIQUE,
+                FOREIGN KEY (empleado_id) REFERENCES empleado(id)
+                    ON DELETE CASCADE
+            )
+        """
 
     with conexion_segura() as conexion:
         cursor = conexion.cursor()
-        for sql in (sql_departamento, sql_proyecto, sql_empleado, sql_registro_tiempo):
+        for sql in (sql_departamento, sql_proyecto, sql_empleado, sql_registro_tiempo, sql_usuario):
             cursor.execute(sql)
         conexion.commit()

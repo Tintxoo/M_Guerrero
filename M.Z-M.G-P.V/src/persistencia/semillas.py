@@ -1,8 +1,12 @@
+import hashlib
+from datetime import date
+
 from dominio.departamento import Departamento
 from dominio.empleado import Empleado
+from dominio.usuario import Usuario
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
-from datetime import date
+from persistencia.usuario_dao import UsuarioDAO
 
 def cargar_departamentos():
     # 5 departamentos de ejemplo
@@ -86,8 +90,30 @@ def cargar_empleados(departamentos):
         EmpleadoDAO.insertar(nuevo_empleado)
         print(f"Empleado creado: {email} en {depto_asignado.nombre}")
 
+def cargar_usuarios():
+    password_default = "empleado123"
+    password_hash = hashlib.sha256(password_default.encode("utf-8")).hexdigest()
+
+    for empleado in EmpleadoDAO.listar():
+        if UsuarioDAO.buscar_por_empleado(empleado.id) is not None:
+            print(f"Usuario ya existe para el empleado: {empleado.email}")
+            continue
+
+        nombre_usuario = empleado.email.split("@", 1)[0].lower()
+        nombre_usuario = Usuario.normalizar_usuario(nombre_usuario)
+
+        usuario = Usuario(
+            nombre_usuario=nombre_usuario,
+            password_hash=password_hash,
+            empleado_id=empleado.id,
+        )
+        UsuarioDAO.insertar(usuario)
+        print(f"Usuario creado: {usuario.nombre_usuario} | password: {password_default}")
+
+
 def inicializar_base_datos():
     print("--- Iniciando precarga de datos ---")
     departamentos = cargar_departamentos()
     cargar_empleados(departamentos)
+    cargar_usuarios()
     print("--- Precarga finalizada ---")
