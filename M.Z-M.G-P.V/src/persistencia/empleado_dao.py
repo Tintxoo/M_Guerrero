@@ -102,6 +102,22 @@ class EmpleadoDAO:
             return True
 
     @staticmethod
+    def actualizar_perfil(id_empleado: int, nombre: str, email: str) -> bool:
+        marca = marcador_sql()
+        with conexion_segura() as conexion:
+            cursor = conexion.cursor()
+            cursor.execute(
+                f"""
+                UPDATE empleado
+                SET nombre = {marca}, email = {marca}
+                WHERE id = {marca}
+                """,
+                (nombre, email, id_empleado),
+            )
+            conexion.commit()
+            return cursor.rowcount > 0
+
+    @staticmethod
     def listar() -> list[Empleado]:
         with conexion_segura() as conexion:
             cursor = conexion.cursor()

@@ -1,30 +1,46 @@
-from presentacion.entrada import leer_opcion, limpiar_consola, pausar
+from dominio.usuario import Usuario
+from presentacion.menu_autoservicio import menu_autoservicio_empleado
 from presentacion.menu_departamento import menu_departamento
 from presentacion.menu_empleado import menu_empleado
 from presentacion.menu_proyecto import menu_proyecto
 from presentacion.menu_registro_tiempo import menu_registro_tiempo
+from presentacion.menu_usuario import registrar_usuario
+from servicios.entrada import leer_opcion, limpiar_consola, pausar
+from servicios.permisos import exigir_administrador
 
 
 def mostrar_opciones_principales():
-    print("\n===== SISTEMA ECOTECH =====")
+    print("\n===== SISTEMA ECOTECH - ADMINISTRACIÓN =====")
     print("1. Gestión de Departamentos")
     print("2. Gestión de Empleados")
     print("3. Gestión de Proyectos")
     print("4. Gestión de Registros de Tiempo")
+    print("5. Registrar cuenta de empleado")
     print("0. Salir")
 
 
-def iniciar_menu_principal():
+def _registrar_cuenta_empleado(usuario: Usuario) -> None:
+    registrar_usuario(usuario)
+    pausar()
+
+
+def iniciar_menu_principal(usuario: Usuario):
+    if usuario.rol == Usuario.ROL_EMPLEADO:
+        menu_autoservicio_empleado(usuario)
+        return
+    exigir_administrador(usuario)
+
     acciones = {
         "1": menu_departamento,
         "2": menu_empleado,
         "3": menu_proyecto,
         "4": menu_registro_tiempo,
+        "5": lambda: _registrar_cuenta_empleado(usuario),
     }
     while True:
         limpiar_consola()
         mostrar_opciones_principales()
-        opcion = leer_opcion("Seleccione una opción: ", {"0", "1", "2", "3", "4"})
+        opcion = leer_opcion("Seleccione una opción: ", {"0", "1", "2", "3", "4", "5"})
         if opcion == "0":
             print("Cerrando sistema. ¡Hasta luego!")
             return

@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import sqlite3
 import sys
@@ -5,6 +7,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -12,12 +15,17 @@ from dominio.departamento import Departamento
 from dominio.empleado import Empleado
 from dominio.proyecto import Proyecto
 from dominio.registro_tiempo import RegistroTiempo
+from dominio.usuario import Usuario
+from presentacion.menu_autoservicio import consultar_mis_registros
+from presentacion.menu_usuario import registrar_usuario
 from persistencia.crear_db import crear_tablas
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDAO
 from persistencia.registro_tiempo_dao import RegistroTiempoDAO
-from cargar_ejemplos import (
+from persistencia.usuario_dao import UsuarioDAO
+from servicios.seguridad import hash_password, verify_password
+from scripts.cargar_ejemplos import (
     EMPLEADOS_EJEMPLO,
     PROYECTOS_EJEMPLO,
     cargar_datos_ejemplo,
@@ -105,6 +113,165 @@ class CRUDTests(unittest.TestCase):
         self.assertTrue(EmpleadoDAO.eliminar(empleado.id))
         self.assertTrue(ProyectoDAO.eliminar(proyecto.id))
         self.assertTrue(DepartamentoDAO.eliminar(departamento.id))
+
+    def test_usuario_guarda_rol_y_no_permite_actualizarlo_con_dao(self):
+        empleado = EmpleadoDAO.insertar(
+            Empleado(
+                "Ana Torres",
+                "Calle 1",
+                "555-0101",
+                "ana@example.com",
+                date(2026, 1, 2),
+                1250,
+            )
+        )
+        usuario = Usuario(
+            "ana.torres",
+            hash_password("clave-segura"),
+            empleado.id,
+            rol=Usuario.ROL_ADMINISTRADOR,
+        )
+        UsuarioDAO.insertar(usuario)
+
+        usuario.rol = Usuario.ROL_EMPLEADO
+        self.assertTrue(UsuarioDAO.actualizar(usuario))
+        guardado = UsuarioDAO.buscar_por_nombre("ana.torres")
+        self.assertEqual(guardado.rol, Usuario.ROL_ADMINISTRADOR)
+        self.assertEqual(guardado.empleado_id, empleado.id)
+
+    def test_administrador_registra_cuenta_con_rol_empleado(self):
+        empleado = EmpleadoDAO.insertar(
+            Empleado(
+                "Carlos Ruiz",
+                "Calle 2",
+                "555-0102",
+                "carlos@example.com",
+                date(2026, 1, 3),
+                1100,
+            )
+        )
+        administrador = Usuario(
+            "ana.torres",
+            "hash_seguro",
+            1,
+            rol=Usuario.ROL_ADMINISTRADOR,
+        )
+
+        with (
+            patch("builtins.input", side_effect=["carlos.ruiz", str(empleado.id)]),
+            patch("presentacion.menu_usuario.getpass", return_value="clave-segura"),
+            patch("builtins.print"),
+        ):
+            registrar_usuario(administrador)
+
+        cuenta = UsuarioDAO.buscar_por_nombre("carlos.ruiz")
+        self.assertEqual(cuenta.rol, Usuario.ROL_EMPLEADO)
+        self.assertTrue(verify_password("clave-segura", cuenta.password_hash))
+
+    def test_migracion_legacy_asigna_ana_admin_y_resto_empleado(self):
+        db_anterior = os.environ["DB_NAME"]
+        ruta_legacy = str(Path(self.directorio.name) / "legacy.db")
+        os.environ["DB_NAME"] = ruta_legacy
+        try:
+            conexion = sqlite3.connect(ruta_legacy)
+            try:
+                conexion.execute(
+                    """
+                    CREATE TABLE usuario (
+                        id INTEGER PRIMARY KEY,
+                        nombre_usuario TEXT NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        empleado_id INTEGER NOT NULL
+                    )
+                    """
+                )
+                conexion.executemany(
+                    """
+                    INSERT INTO usuario (id, nombre_usuario, password_hash, empleado_id)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    [
+                    (1, "ana.torres", "legacy_hash", 1),
+                    (2, "carlos.ruiz", "legacy_hash", 2),
+                    ],
+                )
+                conexion.commit()
+            finally:
+                conexion.close()
+
+            crear_tablas()
+            ana = UsuarioDAO.buscar_por_nombre("ana.torres")
+            carlos = UsuarioDAO.buscar_por_nombre("carlos.ruiz")
+            self.assertEqual(ana.rol, Usuario.ROL_ADMINISTRADOR)
+            self.assertEqual(carlos.rol, Usuario.ROL_EMPLEADO)
+        finally:
+            os.environ["DB_NAME"] = db_anterior
+
+    def test_perfil_empleado_solo_actualiza_nombre_y_correo(self):
+        departamento = DepartamentoDAO.insertar(Departamento("Tecnología"))
+        empleado = EmpleadoDAO.insertar(
+            Empleado(
+                "Luis Soto",
+                "Calle 2",
+                "555-0102",
+                "luis@example.com",
+                date(2026, 1, 3),
+                1100,
+                departamento.id,
+            )
+        )
+
+        self.assertTrue(
+            EmpleadoDAO.actualizar_perfil(empleado.id, "Luis Pérez", "luis.perez@example.com")
+        )
+        actualizado = EmpleadoDAO.obtenerPorId(empleado.id)
+        self.assertEqual(actualizado.nombre, "Luis Pérez")
+        self.assertEqual(actualizado.email, "luis.perez@example.com")
+        self.assertEqual(actualizado.direccion, "Calle 2")
+        self.assertEqual(actualizado.telefono, "555-0102")
+        self.assertEqual(actualizado.salario, 1100)
+        self.assertEqual(actualizado.departamento_id, departamento.id)
+
+    def test_empleado_consulta_solo_sus_registros(self):
+        empleados = [
+            EmpleadoDAO.insertar(
+                Empleado(
+                    nombre,
+                    "Calle 1",
+                    "555-0101",
+                    email,
+                    date(2026, 1, 2),
+                    1250,
+                )
+            )
+            for nombre, email in (
+                ("Ana Torres", "ana@example.com"),
+                ("Carlos Ruiz", "carlos@example.com"),
+            )
+        ]
+        proyecto = ProyectoDAO.insertar(
+            Proyecto("EcoApp", "Plataforma interna", date(2026, 2, 1))
+        )
+        for empleado, descripcion in zip(
+            empleados, ("Registro privado Ana", "Registro privado Carlos")
+        ):
+            RegistroTiempoDAO.insertar(
+                RegistroTiempo(
+                    fecha=date(2026, 2, 3),
+                    horas=2,
+                    descripcion=descripcion,
+                    empleado_id=empleado.id,
+                    proyecto_id=proyecto.id,
+                )
+            )
+
+        usuario = Usuario("ana", "hash_seguro", empleados[0].id)
+        salida = io.StringIO()
+        with contextlib.redirect_stdout(salida):
+            consultar_mis_registros(usuario)
+
+        self.assertIn("Registro privado Ana", salida.getvalue())
+        self.assertNotIn("Registro privado Carlos", salida.getvalue())
 
     def test_gerente_debe_pertenecer_al_departamento(self):
         departamento = DepartamentoDAO.insertar(Departamento("Operaciones"))

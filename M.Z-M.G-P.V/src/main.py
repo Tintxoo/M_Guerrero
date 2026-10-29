@@ -11,8 +11,9 @@ def main():
     except Exception as error:
         raise SystemExit(f"No fue posible inicializar la base de datos: {error}") from error
 
-    if menu_usuario():
-        iniciar_menu_principal()
+    usuario = menu_usuario()
+    if usuario is not None:
+        iniciar_menu_principal(usuario)
 
 
 if __name__ == "__main__":

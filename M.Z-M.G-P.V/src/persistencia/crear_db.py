@@ -52,6 +52,8 @@ def crear_tablas():
                 nombre_usuario TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 empleado_id INTEGER NOT NULL UNIQUE,
+                rol TEXT NOT NULL DEFAULT 'empleado'
+                    CHECK (rol IN ('administrador', 'empleado')),
                 FOREIGN KEY (empleado_id) REFERENCES empleado(id)
                     ON DELETE CASCADE
             )
@@ -106,6 +108,7 @@ def crear_tablas():
                 nombre_usuario VARCHAR(40) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
                 empleado_id INT NOT NULL UNIQUE,
+                rol VARCHAR(20) NOT NULL DEFAULT 'empleado',
                 FOREIGN KEY (empleado_id) REFERENCES empleado(id)
                     ON DELETE CASCADE
             )
@@ -115,4 +118,33 @@ def crear_tablas():
         cursor = conexion.cursor()
         for sql in (sql_departamento, sql_proyecto, sql_empleado, sql_registro_tiempo, sql_usuario):
             cursor.execute(sql)
+        if obtener_motor() == "sqlite":
+            cursor.execute("PRAGMA table_info(usuario)")
+            columnas_usuario = {fila[1] for fila in cursor.fetchall()}
+        else:
+            cursor.execute("SHOW COLUMNS FROM usuario")
+            columnas_usuario = {fila[0] for fila in cursor.fetchall()}
+
+        if "rol" not in columnas_usuario:
+            if obtener_motor() == "sqlite":
+                cursor.execute(
+                    """
+                    ALTER TABLE usuario
+                    ADD COLUMN rol TEXT NOT NULL DEFAULT 'empleado'
+                    CHECK (rol IN ('administrador', 'empleado'))
+                    """
+                )
+            else:
+                cursor.execute(
+                    """
+                    ALTER TABLE usuario
+                    ADD COLUMN rol VARCHAR(20) NOT NULL DEFAULT 'empleado'
+                    """
+                )
+            marca = "?" if obtener_motor() == "sqlite" else "%s"
+            cursor.execute(
+                f"UPDATE usuario SET rol = 'administrador' "
+                f"WHERE LOWER(nombre_usuario) = {marca}",
+                ("ana.torres",),
+            )
         conexion.commit()

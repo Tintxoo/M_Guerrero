@@ -1,4 +1,3 @@
-import hashlib
 from datetime import date
 
 from dominio.departamento import Departamento
@@ -7,17 +6,18 @@ from dominio.usuario import Usuario
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.usuario_dao import UsuarioDAO
+from servicios.seguridad import hash_password
 
 def cargar_departamentos():
     # 5 departamentos de ejemplo
     nombres_departamentos = [
-        "Tecnología", 
-        "Recursos Humanos", 
-        "Ventas", 
-        "Finanzas", 
+        "Tecnología",
+        "Recursos Humanos",
+        "Ventas",
+        "Finanzas",
         "Marketing"
     ]
-    
+
     # Cargamos los existentes en memoria para evitar consultas repetitivas
     existentes = {d.nombre: d for d in DepartamentoDAO.listar()}
     departamentos_creados = []
@@ -27,12 +27,12 @@ def cargar_departamentos():
             print(f"Departamento ya existe: {nombre}")
             departamentos_creados.append(existentes[nombre])
             continue
-            
+
         nuevo_depto = Departamento(nombre=nombre, id=None, gerente_id=None)
         DepartamentoDAO.insertar(nuevo_depto)
         print(f"Departamento creado: {nombre}")
         departamentos_creados.append(nuevo_depto)
-        
+
     return departamentos_creados
 
 def cargar_empleados(departamentos):
@@ -72,10 +72,10 @@ def cargar_empleados(departamentos):
         if email in empleados_existentes:
             print(f"Empleado ya existe: {email}")
             continue
-        
+
         # Distribuir uniformemente a los empleados entre los 5 departamentos
         depto_asignado = departamentos[i % len(departamentos)]
-        
+
         nuevo_empleado = Empleado(
             id=None,
             nombre=nombre,
@@ -86,13 +86,12 @@ def cargar_empleados(departamentos):
             salario=salario,
             departamento_id=depto_asignado.id
         )
-        
+
         EmpleadoDAO.insertar(nuevo_empleado)
         print(f"Empleado creado: {email} en {depto_asignado.nombre}")
 
 def cargar_usuarios():
     password_default = "empleado123"
-    password_hash = hashlib.sha256(password_default.encode("utf-8")).hexdigest()
 
     for empleado in EmpleadoDAO.listar():
         if UsuarioDAO.buscar_por_empleado(empleado.id) is not None:
@@ -104,11 +103,16 @@ def cargar_usuarios():
 
         usuario = Usuario(
             nombre_usuario=nombre_usuario,
-            password_hash=password_hash,
+            password_hash=hash_password(password_default),
             empleado_id=empleado.id,
+            rol=(
+                Usuario.ROL_ADMINISTRADOR
+                if nombre_usuario == "ana.torres"
+                else Usuario.ROL_EMPLEADO
+            ),
         )
         UsuarioDAO.insertar(usuario)
-        print(f"Usuario creado: {usuario.nombre_usuario} | password: {password_default}")
+        print(f"Usuario creado: {usuario.nombre_usuario} | rol: {usuario.rol}")
 
 
 def inicializar_base_datos():

@@ -1,6 +1,6 @@
 from dominio.proyecto import Proyecto
 from persistencia.proyecto_dao import ProyectoDAO
-from presentacion.entrada import (
+from servicios.entrada import (
     leer_entero,
     leer_fecha,
     leer_opcion,

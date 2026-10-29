@@ -1,7 +1,7 @@
 from dominio.departamento import Departamento
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
-from presentacion.entrada import (
+from servicios.entrada import (
     leer_entero,
     leer_nombre,
     leer_opcion,

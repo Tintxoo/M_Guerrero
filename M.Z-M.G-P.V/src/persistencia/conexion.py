@@ -2,6 +2,8 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime
+from pathlib import Path
+
 import pymysql
 from dotenv import load_dotenv
 
@@ -16,10 +18,12 @@ def abrir_conexion():
     motor = obtener_motor()
 
     if motor == "sqlite":
-        nombre_db = os.getenv("DB_NAME", "ecotech.db")
-        directorio_actual = os.path.dirname(os.path.abspath(__file__))
-        ruta_absoluta = os.path.join(directorio_actual, nombre_db)
-        conexion = sqlite3.connect(ruta_absoluta, timeout=10)
+        nombre_db = os.getenv("DB_NAME", "data/ecotech.db")
+        ruta_db = Path(nombre_db)
+        if not ruta_db.is_absolute():
+            ruta_db = Path(__file__).resolve().parents[2] / ruta_db
+        ruta_db.parent.mkdir(parents=True, exist_ok=True)
+        conexion = sqlite3.connect(str(ruta_db), timeout=10)
         conexion.execute("PRAGMA foreign_keys = ON")
         return conexion
 

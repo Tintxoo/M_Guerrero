@@ -1,4 +1,7 @@
 class Usuario:
+    ROL_ADMINISTRADOR = "administrador"
+    ROL_EMPLEADO = "empleado"
+    ROLES_VALIDOS = {ROL_ADMINISTRADOR, ROL_EMPLEADO}
     MIN_USUARIO = 3
     MAX_USUARIO = 40
     MIN_CLAVE = 6
@@ -9,12 +12,16 @@ class Usuario:
         password_hash: str,
         empleado_id: int,
         id: int | None = None,
+        rol: str = ROL_EMPLEADO,
     ):
         if type(empleado_id) is not int or empleado_id <= 0:
             raise ValueError("El ID del empleado debe ser positivo.")
+        if rol not in self.ROLES_VALIDOS:
+            raise ValueError("El rol debe ser 'administrador' o 'empleado'.")
 
         self.id = id
         self.empleado_id = empleado_id
+        self.rol = rol
         self.nombre_usuario = self.normalizar_usuario(nombre_usuario)
         self.password_hash = self.validar_password_hash(password_hash)
 

@@ -12,11 +12,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from dominio.usuario import Usuario
 from persistencia.crear_db import crear_tablas
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDAO
 from persistencia.registro_tiempo_dao import RegistroTiempoDAO
-from presentacion.entrada import (
+from servicios.entrada import (
     leer_correo,
     leer_decimal,
     leer_entero,
@@ -74,7 +75,9 @@ class EntradaYMenusTests(unittest.TestCase):
         salida = io.StringIO()
         with patch.object(builtins, "input", side_effect=respuestas):
             with contextlib.redirect_stdout(salida):
-                iniciar_menu_principal()
+                iniciar_menu_principal(
+                    Usuario("admin", "hash_seguro", 1, rol=Usuario.ROL_ADMINISTRADOR)
+                )
 
         empleado = EmpleadoDAO.obtenerPorId(1)
         proyecto = ProyectoDAO.obtenerPorId(1)
@@ -111,7 +114,9 @@ class EntradaYMenusTests(unittest.TestCase):
         salida = io.StringIO()
         with patch.object(builtins, "input", side_effect=respuestas):
             with contextlib.redirect_stdout(salida):
-                iniciar_menu_principal()
+                iniciar_menu_principal(
+                    Usuario("admin", "hash_seguro", 1, rol=Usuario.ROL_ADMINISTRADOR)
+                )
 
         texto = salida.getvalue()
         self.assertIn("Empleado actualizado correctamente.", texto)
@@ -128,14 +133,26 @@ class EntradaYMenusTests(unittest.TestCase):
 
     def test_limpiar_consola_solo_limpia_terminal_interactivo(self):
         salida_no_interactiva = io.StringIO()
-        with patch("presentacion.entrada.subprocess.run") as ejecutar:
-            with patch("presentacion.entrada.sys.stdout", salida_no_interactiva):
+        with patch("servicios.entrada.subprocess.run") as ejecutar:
+            with patch("servicios.entrada.sys.stdout", salida_no_interactiva):
                 limpiar_consola()
         ejecutar.assert_not_called()
 
         consola = Mock()
         consola.isatty.return_value = True
-        with patch("presentacion.entrada.subprocess.run") as ejecutar:
-            with patch("presentacion.entrada.sys.stdout", consola):
+        with patch("servicios.entrada.subprocess.run") as ejecutar:
+            with patch("servicios.entrada.sys.stdout", consola):
                 limpiar_consola()
         ejecutar.assert_called_once()
+
+    def test_menu_de_empleado_no_abre_funciones_administrativas(self):
+        usuario = Usuario("empleado", "hash_seguro", 1)
+        salida = io.StringIO()
+        with patch.object(builtins, "input", return_value="0"):
+            with contextlib.redirect_stdout(salida):
+                iniciar_menu_principal(usuario)
+
+        self.assertIn("PORTAL DEL EMPLEADO", salida.getvalue())
+        self.assertIn("Consultar mis registros de tiempo", salida.getvalue())
+        self.assertNotIn("Gestión de Empleados", salida.getvalue())
+        self.assertNotIn("Gestión de Registros de Tiempo", salida.getvalue())

@@ -1,69 +1,118 @@
 # Sistema de Gestión EcoTechSolutions
 
 Aplicación de consola en Python para administrar departamentos, empleados,
-proyectos y registros de tiempo. La implementación está organizada en capas:
+proyectos y registros de tiempo. Incluye registro e inicio de sesión de usuarios
+y persistencia en SQLite o MySQL.
 
-- `src/dominio`: clases y relaciones del diagrama UML.
-- `src/persistencia`: conexión, creación de tablas y objetos DAO con operaciones
-  CRUD parametrizadas.
-- `src/presentacion`: menús y validación de entradas.
-- `src/main.py`: inicialización de la base de datos y coordinación de los menús.
+## Requisitos
 
-## Ejecución local con SQLite
+- Python 3.10 o superior.
+- Windows PowerShell (los comandos siguientes se ejecutan desde la carpeta raíz
+  del proyecto).
 
-Se requiere Python 3.10 o superior.
+## Instalación y ejecución en Windows
+
+1. Crea y activa un entorno virtual:
+
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+   Si PowerShell bloquea la activación del entorno, puedes ejecutar los comandos
+   siguientes usando directamente `.\.venv\Scripts\python.exe`.
+
+2. Instala las dependencias:
+
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
+
+3. Inicia el programa:
+
+   ```powershell
+   python src\main.py
+   ```
+
+La primera ejecución crea las tablas de SQLite en `data/ecotech.db` y carga
+datos iniciales de demostración. SQLite es
+la configuración predeterminada; no necesitas crear un archivo `.env` para
+ejecutar localmente.
+
+## Acceso inicial
+
+Al iniciar, el programa muestra el menú de acceso para iniciar sesión o salir.
+La precarga inicial crea cuentas de demostración. El nombre de cada cuenta es
+la parte del correo del empleado anterior a `@` (por ejemplo, `ana.torres`); la
+contraseña inicial compartida para esos datos de prueba es `empleado123`. Usa
+estas credenciales solo para desarrollo y demostración, no en un entorno real.
+
+Al iniciar sesión, se abre el menú que corresponde al rol de la cuenta. La
+contraseña se solicita de forma oculta y no se muestra en la consola mientras
+la escribes. El administrador puede registrar cuentas para empleados
+existentes; sus nombres de usuario deben tener entre 3 y 40 caracteres y sus
+contraseñas, al menos 6.
+
+Las contraseñas nuevas se guardan usando PBKDF2-HMAC-SHA256 con una sal aleatoria
+por cuenta y 600.000 iteraciones; no se almacenan en texto plano. Los hashes
+SHA-256 heredados se actualizan automáticamente cuando el usuario inicia sesión
+correctamente.
+
+La precarga asigna el rol **administrador** a `ana.torres`; las demás cuentas
+quedan con el rol **empleado**. Todas las cuentas de demostración usan
+inicialmente la contraseña `empleado123`.
+Al iniciar, una base de datos existente se migra automáticamente para añadir
+el rol a las cuentas actuales y asignar a `ana.torres` como administradora.
+
+El administrador conserva los menús de gestión de departamentos, empleados,
+proyectos y registros de tiempo, y puede registrar cuentas de empleados. Los
+empleados solo pueden consultar su propia ficha y registros de tiempo, y
+modificar su nombre y correo. El acceso a los registros propios se filtra por
+el ID del empleado asociado a la sesión; desde el menú de empleado no se
+ofrecen funciones de administración, ni se puede cambiar el rol, el ID o las
+relaciones laborales.
+
+## Datos de demostración opcionales
+
+Para cargar un departamento, dos empleados, proyectos y registros de tiempo
+adicionales, ejecuta desde la raíz:
 
 ```powershell
-python -m pip install -r requirement.txt
-python src/main.py
+python scripts\cargar_ejemplos.py
 ```
 
-SQLite se utiliza por defecto y crea `src/persistencia/ecotech.db`. Para cambiar
-la configuración, copia `.env_example` a `.env`. No subas `.env` ni credenciales
-reales al repositorio.
+La carga es repetible y evita duplicar esos registros. Luego puedes iniciar el
+programa con `python src\main.py`.
 
-Para cargar dos empleados y datos relacionados de demostración (departamento,
-gerente, proyectos y horas) ejecuta:
+## Configuración de MySQL
 
-```powershell
-python src/cargar_ejemplos.py
-```
+SQLite se utiliza por defecto. Para MySQL, configura las variables de conexión
+en un archivo local `.env` y selecciona `DB_ENGINE=mysql`. Puedes basarte en
+`.env_example` si está disponible en la copia del proyecto. No compartas ni
+subas `.env` o credenciales reales; utiliza un usuario de base de datos con los
+permisos mínimos necesarios. Para SQLite, `DB_NAME` puede ser una ruta
+absoluta o una ruta relativa a la raíz del proyecto.
 
-La carga es repetible y no duplica los ejemplos si vuelves a ejecutarla.
-Después inicia la aplicación normalmente con `python src/main.py`.
+## Estructura del proyecto
 
-## Uso de MySQL
+- `src/dominio`: entidades y relaciones del modelo.
+- `src/persistencia`: conexión, creación de tablas y DAO con operaciones CRUD
+  parametrizadas.
+- `src/presentacion`: menús de acceso y gestión, además de validación de
+  entradas.
+- `src/servicios`: validación de entradas, hashing de contraseñas y autorización
+  centralizada por rol.
+- `src/main.py`: inicialización de la base de datos y arranque de la aplicación.
+- `scripts`: utilidades independientes y carga opcional de datos de ejemplo.
+- `tests`: pruebas automatizadas.
 
-Configura en `.env` `DB_ENGINE=mysql`, el host, puerto, nombre de base de datos,
-usuario y contraseña. El usuario de la aplicación debe tener permisos limitados
-a las operaciones requeridas; la contraseña se lee desde el entorno y no se
-incluye en el código. La aplicación informa las variables obligatorias que
-falten y no intenta conectarse con credenciales predeterminadas.
+Los formularios validan, entre otros datos, fechas `AAAA-MM-DD`, IDs enteros
+positivos, correos, teléfonos, salarios y horas registradas.
 
-## Relaciones principales
+## Ejecutar las pruebas
 
-- Un departamento contiene empleados y puede tener un empleado gerente.
-- Un empleado puede pertenecer a un departamento y registrar varios tiempos.
-- Cada registro de tiempo corresponde a un empleado y a un proyecto.
-- Un proyecto agrupa sus registros; `calcularHorasTotales()` suma las horas
-  recuperadas desde la base de datos.
-
-Los DAO usan consultas parametrizadas, cierran las conexiones incluso cuando
-ocurre un error y revierten la transacción antes de propagar la excepción. Los
-formularios validan los datos y vuelven a solicitar las entradas que no cumplen
-el formato esperado: fechas `AAAA-MM-DD`, horas y montos con hasta dos decimales
-(punto o coma), IDs enteros positivos, correos y teléfonos válidos. El salario
-puede ser cero y las horas registradas deben ser mayores que cero. La consola se
-limpia entre operaciones y espera confirmación para que se alcance a leer el
-resultado.
-
-## Validación
-
-Ejecuta las pruebas automatizadas desde la raíz del repositorio:
+Desde la raíz del proyecto:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
-
-La revisión técnica final y la explicación de los aportes individuales y del uso
-de herramientas de IA deben ser realizadas y justificadas por el equipo.

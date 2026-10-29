@@ -2,7 +2,7 @@ from dominio.registro_tiempo import RegistroTiempo
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDAO
 from persistencia.registro_tiempo_dao import RegistroTiempoDAO
-from presentacion.entrada import (
+from servicios.entrada import (
     convertir_decimal,
     leer_decimal,
     leer_entero,
