@@ -5,9 +5,17 @@ from persistencia.conexion import conexion_segura, marcador_sql, normalizar_fech
 class EmpleadoDAO:
     @staticmethod
     def insertar(empleado: Empleado) -> Empleado:
+        empleado.actualizarDatos()
+        empleado.asignarDepartamento(empleado.departamento_id)
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
+            cursor.execute(
+                f"SELECT 1 FROM empleado WHERE LOWER(email) = LOWER({marca})",
+                (empleado.email,),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError("Ese correo ya está asociado a otro empleado.")
             cursor.execute(
                 f"""
                 INSERT INTO empleado (
@@ -64,9 +72,20 @@ class EmpleadoDAO:
 
     @staticmethod
     def actualizar(empleado: Empleado) -> bool:
+        empleado.actualizarDatos()
+        empleado.asignarDepartamento(empleado.departamento_id)
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
+            cursor.execute(
+                f"""
+                SELECT 1 FROM empleado
+                WHERE LOWER(email) = LOWER({marca}) AND id <> {marca}
+                """,
+                (empleado.email, empleado.id),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError("Ese correo ya está asociado a otro empleado.")
             cursor.execute(
                 f"SELECT departamento_id FROM empleado WHERE id = {marca}",
                 (empleado.id,),
@@ -102,17 +121,48 @@ class EmpleadoDAO:
             return True
 
     @staticmethod
-    def actualizar_perfil(id_empleado: int, nombre: str, email: str) -> bool:
+    def actualizar_perfil(
+        id_empleado: int,
+        nombre: str,
+        email: str,
+        direccion: str,
+        telefono: str,
+    ) -> bool:
+        empleado = EmpleadoDAO.obtenerPorId(id_empleado)
+        if empleado is None:
+            return False
+        empleado.actualizarDatos(
+            nombre=nombre,
+            email=email,
+            direccion=direccion,
+            telefono=telefono,
+        )
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
             cursor.execute(
                 f"""
+                SELECT 1 FROM empleado
+                WHERE LOWER(email) = LOWER({marca}) AND id <> {marca}
+                """,
+                (empleado.email, id_empleado),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError("Ese correo ya está asociado a otro empleado.")
+            cursor.execute(
+                f"""
                 UPDATE empleado
-                SET nombre = {marca}, email = {marca}
+                SET nombre = {marca}, email = {marca}, direccion = {marca},
+                    telefono = {marca}
                 WHERE id = {marca}
                 """,
-                (nombre, email, id_empleado),
+                (
+                    empleado.nombre,
+                    empleado.email,
+                    empleado.direccion,
+                    empleado.telefono,
+                    id_empleado,
+                ),
             )
             conexion.commit()
             return cursor.rowcount > 0

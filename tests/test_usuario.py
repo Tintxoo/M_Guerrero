@@ -84,6 +84,10 @@ class UsuarioTests(unittest.TestCase):
             Usuario("nombre_valido", "hash_seguro_123", -1)
         with self.assertRaises(ValueError):
             Usuario("nombre_valido", "hash_seguro_123", 1, rol="superusuario")
+        with self.assertRaises(ValueError):
+            Usuario("usuario invalido", "hash_seguro_123", 1)
+        with self.assertRaises(ValueError):
+            Usuario(".usuario", "hash_seguro_123", 1)
 
     def test_permisos_rechazan_rol_incorrecto(self):
         empleado = Usuario("empleado", "hash_seguro_123", 2)

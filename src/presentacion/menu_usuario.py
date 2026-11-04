@@ -32,9 +32,13 @@ def registrar_usuario(usuario_actual: Usuario):
             print("Ese empleado ya tiene un usuario registrado.")
             return
 
-        password = getpass("Contraseña inicial: ").strip()
+        password = getpass("Contraseña inicial: ")
         if len(password) < Usuario.MIN_CLAVE:
             raise ValueError(f"La contraseña debe tener al menos {Usuario.MIN_CLAVE} caracteres.")
+        if len(password) > Usuario.MAX_CLAVE:
+            raise ValueError(
+                f"La contraseña no puede superar {Usuario.MAX_CLAVE} caracteres."
+            )
 
         usuario = Usuario(
             nombre_usuario,
@@ -56,7 +60,7 @@ def iniciar_sesion() -> Usuario | None:
     print("\n--- Iniciar Sesión ---")
     try:
         nombre_usuario = input("Nombre de usuario: ").strip()
-        password = getpass("Contraseña: ").strip()
+        password = getpass("Contraseña: ")
 
         if not nombre_usuario or not password:
             print("Debe ingresar nombre de usuario y contraseña.")

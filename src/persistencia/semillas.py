@@ -1,12 +1,18 @@
+import random
 from datetime import date
 
 from dominio.departamento import Departamento
 from dominio.empleado import Empleado
+from dominio.proyecto import Proyecto
+from dominio.registro_tiempo import RegistroTiempo
 from dominio.usuario import Usuario
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
+from persistencia.proyecto_dao import ProyectoDAO
+from persistencia.registro_tiempo_dao import RegistroTiempoDAO
 from persistencia.usuario_dao import UsuarioDAO
 from servicios.seguridad import hash_password
+
 
 def cargar_departamentos():
     # 5 departamentos de ejemplo
@@ -115,9 +121,105 @@ def cargar_usuarios():
         print(f"Usuario creado: {usuario.nombre_usuario} | rol: {usuario.rol}")
 
 
+def cargar_proyectos_por_departamento(
+    departamentos: list[Departamento],
+) -> dict[int, Proyecto]:
+    proyectos_existentes = {
+        proyecto.nombre: proyecto for proyecto in ProyectoDAO.listar()
+    }
+    proyectos_por_departamento = {}
+
+    for departamento in departamentos:
+        nombre = f"Proyecto - {departamento.nombre}"[:100]
+        proyecto = proyectos_existentes.get(nombre)
+        if proyecto is None:
+            proyecto = ProyectoDAO.insertar(
+                Proyecto(
+                    nombre,
+                    f"Proyecto asignado al departamento {departamento.nombre}.",
+                    date.today(),
+                )
+            )
+            proyectos_existentes[nombre] = proyecto
+        proyectos_por_departamento[departamento.id] = proyecto
+
+    return proyectos_por_departamento
+
+
+def asignar_proyectos_iniciales(
+    empleados: list[Empleado],
+    proyectos: list[Proyecto],
+) -> None:
+    if not proyectos:
+        return
+
+    usuarios = {usuario.empleado_id: usuario for usuario in UsuarioDAO.listar()}
+    empleados_no_administradores = [
+        empleado
+        for empleado in empleados
+        if (
+            empleado.id not in usuarios
+            or usuarios[empleado.id].rol != Usuario.ROL_ADMINISTRADOR
+        )
+    ]
+
+    for empleado in empleados_no_administradores[:10]:
+        if not ProyectoDAO.listarPorEmpleado(empleado.id):
+            ProyectoDAO.asignarEmpleado(
+                random.choice(proyectos).id,
+                empleado.id,
+            )
+
+
+def cargar_registro_inicial_por_empleado(
+    empleados: list[Empleado],
+    proyectos_por_departamento: dict[int, Proyecto],
+    proyectos: list[Proyecto],
+) -> None:
+    if not proyectos:
+        return
+
+    empleados_con_registros = {
+        registro.empleado_id for registro in RegistroTiempoDAO.listar()
+    }
+    for empleado in empleados:
+        if empleado.id in empleados_con_registros:
+            continue
+
+        proyectos_asignados = ProyectoDAO.listarPorEmpleado(empleado.id)
+        if proyectos_asignados:
+            proyecto = random.choice(proyectos_asignados)
+        else:
+            proyecto = proyectos_por_departamento.get(empleado.departamento_id)
+            if proyecto is None:
+                proyecto = random.choice(proyectos)
+
+        RegistroTiempoDAO.insertar(
+            RegistroTiempo(
+                fecha=date.today(),
+                horas=1,
+                descripcion=f"Registro inicial de {empleado.nombre}.",
+                empleado_id=empleado.id,
+                proyecto_id=proyecto.id,
+            )
+        )
+        empleados_con_registros.add(empleado.id)
+
+
 def inicializar_base_datos():
     print("--- Iniciando precarga de datos ---")
     departamentos = cargar_departamentos()
     cargar_empleados(departamentos)
     cargar_usuarios()
+    empleados = EmpleadoDAO.listar()
+    proyectos_por_departamento = cargar_proyectos_por_departamento(
+        DepartamentoDAO.listar()
+    )
+    proyectos = list(proyectos_por_departamento.values())
+    asignar_proyectos_iniciales(empleados, proyectos)
+    cargar_registro_inicial_por_empleado(
+        empleados,
+        proyectos_por_departamento,
+        proyectos,
+    )
     print("--- Precarga finalizada ---")

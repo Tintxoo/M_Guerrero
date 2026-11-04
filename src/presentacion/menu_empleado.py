@@ -1,12 +1,15 @@
 from dominio.empleado import Empleado
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
+from persistencia.proyecto_dao import ProyectoDAO
 from servicios.entrada import (
     leer_correo,
     leer_correo_opcional,
     leer_decimal,
     leer_decimal_opcional,
+    leer_entidad_existente,
     leer_entero,
+    leer_entero_opcional,
     leer_fecha,
     leer_id_opcional,
     leer_nombre,
@@ -128,25 +131,24 @@ def actualizar_empleado():
             fechaInicioContrato=fecha_contrato,
         )
 
-        departamento_input = input(
-            f"ID del departamento [{empleado.departamento_id or 'ninguno'}] "
-            "(Enter conserva, 0 quita): "
-        ).strip()
+        departamento_id = None
         departamento = None
-        while departamento_input and departamento_input != "0":
-            if not departamento_input.isdecimal() or int(departamento_input) <= 0:
-                print("Ingrese un ID entero positivo, 0 o Enter.")
-            else:
-                departamento = DepartamentoDAO.obtenerPorId(int(departamento_input))
-                if departamento:
-                    break
-                print("No existe un departamento con ese ID.")
-            departamento_input = input("ID del departamento: ").strip()
-        if departamento_input == "0":
-            empleado.asignarDepartamento(None)
-        elif departamento_input:
+        while True:
+            departamento_id = leer_entero_opcional(
+                f"ID del departamento [{empleado.departamento_id or 'ninguno'}] "
+                "(Enter conserva, 0 quita): ",
+                permitir_cero=True,
+            )
+            if departamento_id is None or departamento_id == 0:
+                break
+            departamento = DepartamentoDAO.obtenerPorId(departamento_id)
             if departamento:
-                departamento.agregarEmpleado(empleado)
+                break
+            print("No existe un departamento con ese ID.")
+        if departamento_id == 0:
+            empleado.asignarDepartamento(None)
+        elif departamento_id is not None and departamento is not None:
+            departamento.agregarEmpleado(empleado)
 
         if EmpleadoDAO.actualizar(empleado):
             print("Empleado actualizado correctamente.")
@@ -169,6 +171,40 @@ def eliminar_empleado():
         print(f"No fue posible eliminar el empleado: {error}")
 
 
+def asignar_proyecto():
+    print("\n--- Asignar Proyecto a Empleado ---")
+    try:
+        empleado = leer_entidad_existente(
+            "ID del empleado: ", EmpleadoDAO.obtenerPorId, "un empleado"
+        )
+        proyecto = leer_entidad_existente(
+            "ID del proyecto: ", ProyectoDAO.obtenerPorId, "un proyecto"
+        )
+        if ProyectoDAO.asignarEmpleado(proyecto.id, empleado.id):
+            print("Proyecto asignado correctamente.")
+        else:
+            print("El proyecto ya estaba asignado a ese empleado.")
+    except Exception as error:
+        print(f"No fue posible asignar el proyecto: {error}")
+
+
+def quitar_asignacion_proyecto():
+    print("\n--- Quitar Asignación de Proyecto ---")
+    try:
+        empleado = leer_entidad_existente(
+            "ID del empleado: ", EmpleadoDAO.obtenerPorId, "un empleado"
+        )
+        proyecto = leer_entidad_existente(
+            "ID del proyecto: ", ProyectoDAO.obtenerPorId, "un proyecto"
+        )
+        if ProyectoDAO.quitarAsignacion(proyecto.id, empleado.id):
+            print("Asignación de proyecto eliminada correctamente.")
+        else:
+            print("Ese proyecto no estaba asignado al empleado.")
+    except Exception as error:
+        print(f"No fue posible quitar la asignación: {error}")
+
+
 def mostrar_menu_empleado():
     print("\n===== GESTIÓN DE EMPLEADOS =====")
     print("1. Registrar empleado")
@@ -176,6 +212,8 @@ def mostrar_menu_empleado():
     print("3. Buscar empleado")
     print("4. Actualizar empleado / departamento")
     print("5. Eliminar empleado")
+    print("6. Asignar proyecto a empleado")
+    print("7. Quitar proyecto de empleado")
     print("0. Volver al menú principal")
 
 
@@ -183,7 +221,9 @@ def menu_empleado():
     while True:
         limpiar_consola()
         mostrar_menu_empleado()
-        opcion = leer_opcion("Seleccione una opción: ", {"0", "1", "2", "3", "4", "5"})
+        opcion = leer_opcion(
+            "Seleccione una opción: ", {"0", "1", "2", "3", "4", "5", "6", "7"}
+        )
         if opcion == "0":
             return
         acciones = {
@@ -192,6 +232,8 @@ def menu_empleado():
             "3": buscar_empleado,
             "4": actualizar_empleado,
             "5": eliminar_empleado,
+            "6": asignar_proyecto,
+            "7": quitar_asignacion_proyecto,
         }
         acciones[opcion]()
         pausar()

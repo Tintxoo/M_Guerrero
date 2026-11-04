@@ -11,10 +11,21 @@ class Departamento:
         id: Optional[int] = None,
         gerente_id: Optional[int] = None,
     ):
-        if not nombre.strip():
-            raise ValueError("El nombre del departamento no puede estar vacío.")
+        if (
+            not isinstance(nombre, str)
+            or not nombre.strip()
+            or len(nombre.strip()) > 100
+            or any(ord(caracter) < 32 for caracter in nombre)
+        ):
+            raise ValueError(
+                "El nombre del departamento debe tener entre 1 y 100 caracteres válidos."
+            )
+        if id is not None and (type(id) is not int or id <= 0):
+            raise ValueError("El ID del departamento debe ser un entero positivo.")
+        if gerente_id is not None and (type(gerente_id) is not int or gerente_id <= 0):
+            raise ValueError("El ID del gerente debe ser un entero positivo.")
         self.id = id
-        self.nombre = nombre
+        self.nombre = nombre.strip()
         self.gerente = gerente
         self._gerente_id = gerente.id if gerente else gerente_id
         self._empleados: list[Empleado] = []

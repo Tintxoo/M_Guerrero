@@ -21,12 +21,16 @@ from servicios.entrada import (
     leer_correo,
     leer_decimal,
     leer_entero,
+    leer_entero_opcional,
     leer_fecha,
     leer_id_opcional,
     leer_nombre,
+    leer_correo_opcional,
+    leer_telefono,
     limpiar_consola,
 )
 from presentacion.menu_principal import iniciar_menu_principal
+import main as aplicacion
 
 
 class EntradaYMenusTests(unittest.TestCase):
@@ -51,12 +55,42 @@ class EntradaYMenusTests(unittest.TestCase):
     def test_entradas_invalidas_se_rechazan_y_se_vuelven_a_pedir(self):
         with patch.object(builtins, "input", side_effect=["-2", "1.5", "2"]):
             self.assertEqual(leer_entero("ID: "), 2)
+        with patch.object(
+            builtins,
+            "input",
+            side_effect=["9" * 5000, "4"],
+        ):
+            self.assertEqual(leer_entero("ID: "), 4)
         with patch.object(builtins, "input", side_effect=["-1", "abc", "4"]):
             self.assertEqual(leer_id_opcional("ID opcional: "), 4)
+        with patch.object(
+            builtins,
+            "input",
+            side_effect=["9" * 5000, "0"],
+        ):
+            self.assertEqual(
+                leer_entero_opcional("ID opcional: ", permitir_cero=True),
+                0,
+            )
         with patch.object(builtins, "input", side_effect=["NaN", "1,25"]):
             self.assertEqual(leer_decimal("Horas: ", estrictamente_mayor=True), 1.25)
         with patch.object(builtins, "input", side_effect=["nombre sin correo", "ana@ejemplo.cl"]):
             self.assertEqual(leer_correo("Correo: "), "ana@ejemplo.cl")
+        with patch.object(builtins, "input", side_effect=["a..b@ejemplo.cl", "ana@ejemplo.cl"]):
+            self.assertEqual(leer_correo("Correo: "), "ana@ejemplo.cl")
+        correo_largo = "a" * 145 + "@ejemplo.cl"
+        with patch.object(
+            builtins,
+            "input",
+            side_effect=[correo_largo, "ana@ejemplo.cl"],
+        ):
+            self.assertEqual(leer_correo_opcional("Correo: "), "ana@ejemplo.cl")
+        with patch.object(
+            builtins,
+            "input",
+            side_effect=["123--4567", "1234567"],
+        ):
+            self.assertEqual(leer_telefono("Teléfono: "), "1234567")
         with patch.object(builtins, "input", side_effect=["ana 1", "Ana Pérez"]):
             self.assertEqual(leer_nombre("Nombre: "), "Ana Pérez")
         with patch.object(builtins, "input", side_effect=["13/10/2026", "2026-02-30", "2026-10-13"]):
@@ -156,3 +190,49 @@ class EntradaYMenusTests(unittest.TestCase):
         self.assertIn("Consultar mis registros de tiempo", salida.getvalue())
         self.assertNotIn("Gestión de Empleados", salida.getvalue())
         self.assertNotIn("Gestión de Registros de Tiempo", salida.getvalue())
+
+    def test_cerrar_sesion_vuelve_al_inicio_de_sesion(self):
+        usuario = Usuario("admin", "hash_seguro", 1, rol=Usuario.ROL_ADMINISTRADOR)
+        with (
+            patch.object(aplicacion, "crear_tablas"),
+            patch.object(aplicacion, "inicializar_base_datos"),
+            patch.object(aplicacion, "menu_usuario", side_effect=[usuario, None]) as login,
+            patch.object(aplicacion, "iniciar_menu_principal") as menu,
+        ):
+            aplicacion.main()
+
+        self.assertEqual(login.call_count, 2)
+        menu.assert_called_once_with(usuario)
+
+    def test_opcion_cero_del_menu_principal_cierra_sesion(self):
+        salida = io.StringIO()
+        usuario = Usuario("admin", "hash_seguro", 1, rol=Usuario.ROL_ADMINISTRADOR)
+        with patch.object(builtins, "input", return_value="0"):
+            with contextlib.redirect_stdout(salida):
+                iniciar_menu_principal(usuario)
+
+        self.assertIn("0. Salir de la sesión", salida.getvalue())
+        self.assertIn("Sesión cerrada.", salida.getvalue())
+
+    def test_administrador_puede_abrir_menu_de_cambio(self):
+        usuario = Usuario("admin", "hash_seguro", 1, rol=Usuario.ROL_ADMINISTRADOR)
+        with (
+            patch("presentacion.menu_principal.menu_cambio") as cambio,
+            patch.object(builtins, "input", side_effect=["6", "0"]),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            iniciar_menu_principal(usuario)
+
+        cambio.assert_called_once_with()
+
+    def test_empleado_puede_abrir_menu_de_cambio(self):
+        usuario = Usuario("empleado", "hash_seguro", 1)
+        respuestas = ["7", "", "0"]
+        with (
+            patch("presentacion.menu_autoservicio.menu_cambio") as cambio,
+            patch.object(builtins, "input", side_effect=respuestas),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            iniciar_menu_principal(usuario)
+
+        cambio.assert_called_once_with()

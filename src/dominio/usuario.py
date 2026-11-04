@@ -1,3 +1,6 @@
+import re
+
+
 class Usuario:
     ROL_ADMINISTRADOR = "administrador"
     ROL_EMPLEADO = "empleado"
@@ -5,6 +8,7 @@ class Usuario:
     MIN_USUARIO = 3
     MAX_USUARIO = 40
     MIN_CLAVE = 6
+    MAX_CLAVE = 128
 
     def __init__(
         self,
@@ -35,6 +39,11 @@ class Usuario:
         if len(nombre_usuario) < cls.MIN_USUARIO or len(nombre_usuario) > cls.MAX_USUARIO:
             raise ValueError(
                 f"El nombre de usuario debe tener entre {cls.MIN_USUARIO} y {cls.MAX_USUARIO} caracteres."
+            )
+        if not re.fullmatch(r"[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?", nombre_usuario):
+            raise ValueError(
+                "El usuario solo puede contener letras, números, puntos, guiones y guiones bajos; "
+                "debe comenzar y terminar con una letra o número."
             )
 
         return nombre_usuario

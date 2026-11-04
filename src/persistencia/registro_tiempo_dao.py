@@ -17,6 +17,13 @@ class RegistroTiempoDAO:
 
     @staticmethod
     def insertar(registro: RegistroTiempo) -> RegistroTiempo:
+        registro_validado = RegistroTiempo(
+            fecha=registro.fecha,
+            horas=registro.horas,
+            descripcion=registro.descripcion,
+            empleado_id=registro.empleado_id,
+            proyecto_id=registro.proyecto_id,
+        )
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
@@ -27,10 +34,10 @@ class RegistroTiempoDAO:
                 """,
                 (
                     normalizar_fecha(registro.fecha),
-                    registro.horas,
-                    registro.descripcion,
-                    registro.empleado_id,
-                    registro.proyecto_id,
+                    registro_validado.horas,
+                    registro_validado.descripcion,
+                    registro_validado.empleado_id,
+                    registro_validado.proyecto_id,
                 ),
             )
             registro.id = cursor.lastrowid
@@ -65,6 +72,14 @@ class RegistroTiempoDAO:
 
     @staticmethod
     def actualizar(registro: RegistroTiempo) -> bool:
+        registro_validado = RegistroTiempo(
+            id=registro.id,
+            fecha=registro.fecha,
+            horas=registro.horas,
+            descripcion=registro.descripcion,
+            empleado_id=registro.empleado_id,
+            proyecto_id=registro.proyecto_id,
+        )
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
@@ -82,12 +97,12 @@ class RegistroTiempoDAO:
                 WHERE id = {marca}
                 """,
                 (
-                    normalizar_fecha(registro.fecha),
-                    registro.horas,
-                    registro.descripcion,
-                    registro.empleado_id,
-                    registro.proyecto_id,
-                    registro.id,
+                    normalizar_fecha(registro_validado.fecha),
+                    registro_validado.horas,
+                    registro_validado.descripcion,
+                    registro_validado.empleado_id,
+                    registro_validado.proyecto_id,
+                    registro_validado.id,
                 ),
             )
             conexion.commit()

@@ -1,5 +1,6 @@
 from dominio.usuario import Usuario
 from presentacion.menu_autoservicio import menu_autoservicio_empleado
+from presentacion.menu_cambio import menu_cambio
 from presentacion.menu_departamento import menu_departamento
 from presentacion.menu_empleado import menu_empleado
 from presentacion.menu_proyecto import menu_proyecto
@@ -16,7 +17,8 @@ def mostrar_opciones_principales():
     print("3. Gestión de Proyectos")
     print("4. Gestión de Registros de Tiempo")
     print("5. Registrar cuenta de empleado")
-    print("0. Salir")
+    print("6. Consultar cambio del dólar e historial")
+    print("0. Salir de la sesión")
 
 
 def _registrar_cuenta_empleado(usuario: Usuario) -> None:
@@ -36,13 +38,16 @@ def iniciar_menu_principal(usuario: Usuario):
         "3": menu_proyecto,
         "4": menu_registro_tiempo,
         "5": lambda: _registrar_cuenta_empleado(usuario),
+        "6": menu_cambio,
     }
     while True:
         limpiar_consola()
         mostrar_opciones_principales()
-        opcion = leer_opcion("Seleccione una opción: ", {"0", "1", "2", "3", "4", "5"})
+        opcion = leer_opcion(
+            "Seleccione una opción: ", {"0", "1", "2", "3", "4", "5", "6"}
+        )
         if opcion == "0":
-            print("Cerrando sistema. ¡Hasta luego!")
+            print("Sesión cerrada.")
             return
         try:
             acciones[opcion]()

@@ -5,16 +5,22 @@ from persistencia.conexion import conexion_segura, marcador_sql
 class DepartamentoDAO:
     @staticmethod
     def insertar(departamento: Departamento) -> Departamento:
+        departamento_validado = Departamento(
+            nombre=departamento.nombre,
+            id=departamento.id,
+            gerente_id=departamento.gerente_id,
+        )
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
             cursor.execute(
                 f"INSERT INTO departamento (nombre, gerente_id) VALUES ({marca}, NULL)",
-                (departamento.nombre,),
+                (departamento_validado.nombre,),
             )
             departamento.id = cursor.lastrowid
-            if departamento.gerente_id is not None:
-                DepartamentoDAO._guardar_gerente(conexion, departamento)
+            if departamento_validado.gerente_id is not None:
+                departamento_validado.id = departamento.id
+                DepartamentoDAO._guardar_gerente(conexion, departamento_validado)
             conexion.commit()
         return departamento
 
@@ -45,6 +51,11 @@ class DepartamentoDAO:
 
     @staticmethod
     def actualizar(departamento: Departamento) -> bool:
+        departamento = Departamento(
+            nombre=departamento.nombre,
+            id=departamento.id,
+            gerente_id=departamento.gerente_id,
+        )
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()

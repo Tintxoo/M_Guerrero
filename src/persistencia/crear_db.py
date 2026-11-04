@@ -18,6 +18,17 @@ def crear_tablas():
                 fecha_inicio DATE NOT NULL
             )
         """
+        sql_asignacion_proyecto = """
+            CREATE TABLE IF NOT EXISTS asignacion_proyecto (
+                empleado_id INTEGER NOT NULL,
+                proyecto_id INTEGER NOT NULL,
+                PRIMARY KEY (empleado_id, proyecto_id),
+                FOREIGN KEY (empleado_id) REFERENCES empleado(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (proyecto_id) REFERENCES proyecto(id)
+                    ON DELETE CASCADE
+            )
+        """
         sql_empleado = """
             CREATE TABLE IF NOT EXISTS empleado (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +69,15 @@ def crear_tablas():
                     ON DELETE CASCADE
             )
         """
+        sql_consulta_cambio = """
+            CREATE TABLE IF NOT EXISTS consulta_cambio (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                moneda TEXT NOT NULL CHECK (moneda IN ('CLP', 'ARS', 'EUR')),
+                fecha_valor DATE NOT NULL,
+                valor REAL NOT NULL CHECK (valor > 0),
+                consultado_en TEXT NOT NULL
+            )
+        """
     else:
         sql_departamento = """
             CREATE TABLE IF NOT EXISTS departamento (
@@ -72,6 +92,17 @@ def crear_tablas():
                 nombre VARCHAR(100) NOT NULL,
                 descripcion TEXT,
                 fecha_inicio DATE NOT NULL
+            )
+        """
+        sql_asignacion_proyecto = """
+            CREATE TABLE IF NOT EXISTS asignacion_proyecto (
+                empleado_id INT NOT NULL,
+                proyecto_id INT NOT NULL,
+                PRIMARY KEY (empleado_id, proyecto_id),
+                FOREIGN KEY (empleado_id) REFERENCES empleado(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (proyecto_id) REFERENCES proyecto(id)
+                    ON DELETE CASCADE
             )
         """
         sql_empleado = """
@@ -113,10 +144,27 @@ def crear_tablas():
                     ON DELETE CASCADE
             )
         """
+        sql_consulta_cambio = """
+            CREATE TABLE IF NOT EXISTS consulta_cambio (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                moneda VARCHAR(3) NOT NULL,
+                fecha_valor DATE NOT NULL,
+                valor DECIMAL(20, 8) NOT NULL,
+                consultado_en DATETIME NOT NULL
+            )
+        """
 
     with conexion_segura() as conexion:
         cursor = conexion.cursor()
-        for sql in (sql_departamento, sql_proyecto, sql_empleado, sql_registro_tiempo, sql_usuario):
+        for sql in (
+            sql_departamento,
+            sql_proyecto,
+            sql_empleado,
+            sql_asignacion_proyecto,
+            sql_registro_tiempo,
+            sql_usuario,
+            sql_consulta_cambio,
+        ):
             cursor.execute(sql)
         if obtener_motor() == "sqlite":
             cursor.execute("PRAGMA table_info(usuario)")

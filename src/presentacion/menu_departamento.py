@@ -3,6 +3,7 @@ from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
 from servicios.entrada import (
     leer_entero,
+    leer_entero_opcional,
     leer_nombre,
     leer_opcion,
     limpiar_consola,
@@ -85,25 +86,24 @@ def actualizar_departamento():
             departamento.nombre = nuevo_nombre
 
         gerente_actual = departamento.gerente.id if departamento.gerente else None
-        gerente_input = input(
-            f"ID del gerente [{gerente_actual or 'ninguno'}] "
-            "(Enter conserva, 0 quita): "
-        ).strip()
+        gerente_id = None
         gerente = None
-        while gerente_input and gerente_input != "0":
-            if not gerente_input.isdecimal() or int(gerente_input) <= 0:
-                print("Ingrese un ID entero positivo, 0 o Enter.")
-            else:
-                gerente = EmpleadoDAO.obtenerPorId(int(gerente_input))
-                if gerente:
-                    break
-                print("No existe un empleado con ese ID.")
-            gerente_input = input("ID del gerente: ").strip()
-        if gerente_input == "0":
-            departamento.quitarGerente()
-        elif gerente_input:
+        while True:
+            gerente_id = leer_entero_opcional(
+                f"ID del gerente [{gerente_actual or 'ninguno'}] "
+                "(Enter conserva, 0 quita): ",
+                permitir_cero=True,
+            )
+            if gerente_id is None or gerente_id == 0:
+                break
+            gerente = EmpleadoDAO.obtenerPorId(gerente_id)
             if gerente:
-                departamento.asignarGerente(gerente)
+                break
+            print("No existe un empleado con ese ID.")
+        if gerente_id == 0:
+            departamento.quitarGerente()
+        elif gerente_id is not None and gerente is not None:
+            departamento.asignarGerente(gerente)
 
         if DepartamentoDAO.actualizar(departamento):
             print("Departamento actualizado correctamente.")

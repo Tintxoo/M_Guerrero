@@ -7,6 +7,10 @@ class UsuarioDAO:
     def insertar(usuario: Usuario) -> Usuario:
         from persistencia.empleado_dao import EmpleadoDAO
 
+        usuario.nombre_usuario = Usuario.normalizar_usuario(usuario.nombre_usuario)
+        usuario.password_hash = Usuario.validar_password_hash(usuario.password_hash)
+        if usuario.rol not in Usuario.ROLES_VALIDOS:
+            raise ValueError("El rol debe ser 'administrador' o 'empleado'.")
         if EmpleadoDAO.obtenerPorId(usuario.empleado_id) is None:
             raise ValueError("No existe el empleado asociado al usuario.")
 
@@ -89,9 +93,20 @@ class UsuarioDAO:
 
     @staticmethod
     def actualizar(usuario: Usuario) -> bool:
+        usuario.nombre_usuario = Usuario.normalizar_usuario(usuario.nombre_usuario)
+        usuario.password_hash = Usuario.validar_password_hash(usuario.password_hash)
         marca = marcador_sql()
         with conexion_segura() as conexion:
             cursor = conexion.cursor()
+            cursor.execute(
+                f"""
+                SELECT 1 FROM usuario
+                WHERE LOWER(nombre_usuario) = LOWER({marca}) AND id <> {marca}
+                """,
+                (usuario.nombre_usuario, usuario.id),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError("Ese nombre de usuario ya está registrado.")
             cursor.execute(
                 f"""
                 UPDATE usuario

@@ -38,6 +38,10 @@ La primera ejecución crea las tablas de SQLite en `data/ecotech.db` y carga
 datos iniciales de demostración. SQLite es
 la configuración predeterminada; no necesitas crear un archivo `.env` para
 ejecutar localmente.
+La precarga crea un proyecto por departamento, asigna aleatoriamente uno de
+esos proyectos a los primeros diez empleados que no sean administradores y
+garantiza al menos un registro de tiempo por empleado. Puede ejecutarse
+nuevamente sin duplicar proyectos ni registros iniciales.
 
 ## Acceso inicial
 
@@ -65,12 +69,26 @@ Al iniciar, una base de datos existente se migra automáticamente para añadir
 el rol a las cuentas actuales y asignar a `ana.torres` como administradora.
 
 El administrador conserva los menús de gestión de departamentos, empleados,
-proyectos y registros de tiempo, y puede registrar cuentas de empleados. Los
-empleados solo pueden consultar su propia ficha y registros de tiempo, y
-modificar su nombre y correo. El acceso a los registros propios se filtra por
-el ID del empleado asociado a la sesión; desde el menú de empleado no se
-ofrecen funciones de administración, ni se puede cambiar el rol, el ID o las
-relaciones laborales.
+proyectos y registros de tiempo, puede registrar cuentas de empleados y
+asignarles proyectos desde la gestión de empleados. Al consultar o listar un
+proyecto, puede ver los empleados asignados y los registros de tiempo de cada
+uno en ese proyecto. Los empleados pueden
+consultar su propia ficha, su historial de registros de tiempo y sus proyectos
+asignados, registrar tiempo únicamente en proyectos asignados y modificar su
+nombre, correo, dirección y teléfono. Los correos no pueden repetirse entre
+empleados y guardar el perfil sin cambios se evita. El acceso a registros y
+proyectos propios se filtra por el ID del empleado asociado a la sesión. Los
+empleados pueden cambiar su nombre de usuario (único, de 3 a 40 caracteres) y
+contraseña (de 6 a 128 caracteres) desde el portal. El usuario acepta letras
+minúsculas, números, puntos, guiones y guiones bajos, y debe iniciar y terminar
+con letra o número. Desde el menú de empleado
+no se ofrecen funciones de administración, ni se puede cambiar el rol, el ID o
+las relaciones laborales.
+
+Administradores y empleados pueden consultar el cambio de 1 USD a CLP, ARS o
+EUR. Cada consulta queda guardada con la fecha de actualización reportada por
+la API, el valor de cambio y la fecha/hora de consulta, y se puede revisar desde
+el historial del menú de cambio.
 
 ## Datos de demostración opcionales
 

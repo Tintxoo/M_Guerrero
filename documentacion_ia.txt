@@ -1,0 +1,9 @@
+Documentación de uso de la IA
+
+Como IA para ayudar en la generación, verificación y mejora de funciones, clases y código en general, usé Copilot integrado en VS Code. En general, le solicitaba que generara menús, la estética y la forma en que se muestran al iniciar el programa. También le pedía generar los datos de la semilla para ahorrar tiempo.
+
+Lo usé para generar los roles y el manejo de los servicios, así como para modificar los menús conforme a los permisos de cada rol. También le pedía que verificara el manejo de excepciones y que sanitizara las entradas. Además, lo usé para modificar las bases de datos, las clases y sus DAO, e ir implementando las funcionalidades necesarias para cada rol y clase. Con la API, le pedí que la implementara en el menú y que quedara un registro de las consultas para poder comparar el cambio de la moneda.
+
+Siempre, después de cada cambio en el código, lo ponía a prueba para verificar que tuviera el formato correcto y funcionara como se esperaba. Al usar Copilot desde VS Code no tuve problemas con errores en el código generado ni con incompatibilidades con otras funciones o formatos, ya que la misma IA revisaba el código para que cada cambio fuera compatible con el programa. A su vez, después de realizar cambios, siempre hacía pruebas para verificar que se hubieran implementado correctamente.
+
+Lo que sí, siempre tuve que estar pendiente de que las funcionalidades agregadas y los cambios en el menú o en el manejo de datos cumplieran con la seguridad requerida en el programa. También tenía que poner a prueba que lo generado cumpliera con los estándares de seguridad, integridad y confidencialidad requeridos, y agregar o modificar las acciones permitidas para cada rol y usuario.

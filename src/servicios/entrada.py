@@ -10,8 +10,11 @@ from typing import TypeVar
 
 _PATRON_DECIMAL = re.compile(r"^[0-9]+(?:[.,][0-9]{1,2})?$")
 _PATRON_FECHA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_PATRON_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_PATRON_TELEFONO = re.compile(r"^\+?[0-9][0-9 ()-]{5,19}$")
+_PATRON_EMAIL = re.compile(
+    r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*"
+    r"@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$"
+)
+_PATRON_TELEFONO = re.compile(r"^\+?[0-9]+(?:[ ()-]?[0-9]+)*$")
 _PATRON_NOMBRE = re.compile(
     r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ '-][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$"
 )
@@ -55,15 +58,9 @@ def leer_texto(
 
 def leer_nombre(mensaje: str, *, obligatorio: bool = True) -> str:
     while True:
-        if obligatorio:
-            valor = leer_texto(mensaje, maximo=100)
-        else:
-            valor = input(mensaje).strip()
-            if not valor:
-                return ""
-            if len(valor) > 100:
-                print("El nombre no puede superar 100 caracteres.")
-                continue
+        valor = leer_texto(mensaje, obligatorio=obligatorio, maximo=100)
+        if not valor and not obligatorio:
+            return ""
         if _PATRON_NOMBRE.fullmatch(valor):
             return valor
         print("Use solo letras, espacios, guiones o apóstrofes.")
@@ -71,7 +68,7 @@ def leer_nombre(mensaje: str, *, obligatorio: bool = True) -> str:
 
 def leer_correo_opcional(mensaje: str) -> str | None:
     while True:
-        valor = input(mensaje).strip()
+        valor = leer_texto(mensaje, obligatorio=False, maximo=150)
         if not valor:
             return None
         if _PATRON_EMAIL.fullmatch(valor):
@@ -113,7 +110,11 @@ def leer_entero(mensaje: str, *, minimo: int = 1, maximo: int | None = None) -> 
         if not re.fullmatch(r"[0-9]+", valor):
             print("Ingrese un número entero sin signos ni decimales.")
             continue
-        numero = int(valor)
+        try:
+            numero = int(valor)
+        except ValueError:
+            print("El número ingresado es demasiado grande.")
+            continue
         if numero < minimo:
             print(f"El número debe ser mayor o igual a {minimo}.")
         elif maximo is not None and numero > maximo:
@@ -133,12 +134,39 @@ def leer_id_opcional(
             return None
         if not re.fullmatch(r"[0-9]+", valor):
             print("Ingrese un ID entero positivo.")
-        elif int(valor) == 0 and permitir_quitar:
-            return None
-        elif int(valor) > 0:
-            return int(valor)
         else:
+            try:
+                numero = int(valor)
+            except ValueError:
+                print("El ID ingresado es demasiado grande.")
+                continue
+            if numero == 0 and permitir_quitar:
+                return None
+            if numero > 0:
+                return numero
             print("El ID debe ser un entero positivo.")
+
+
+def leer_entero_opcional(
+    mensaje: str,
+    *,
+    permitir_cero: bool = False,
+) -> int | None:
+    while True:
+        valor = input(mensaje).strip()
+        if not valor:
+            return None
+        if not re.fullmatch(r"[0-9]+", valor):
+            print("Ingrese un número entero positivo.")
+            continue
+        try:
+            numero = int(valor)
+        except ValueError:
+            print("El número ingresado es demasiado grande.")
+            continue
+        if numero > 0 or (numero == 0 and permitir_cero):
+            return numero
+        print("El número debe ser positivo.")
 
 
 def leer_entidad_existente(
@@ -216,7 +244,7 @@ def leer_fecha(
     *,
     obligatorio: bool = True,
     permitir_futuro: bool = False,
-    anos_max_antiguedad: int = 80,
+    anos_max_antiguedad: int | None = 80,
     fecha_min: date | None = None,
     fecha_max: date | None = None,
 ) -> date | None:
@@ -225,6 +253,11 @@ def leer_fecha(
     Por defecto: - No permite fechas futuras (permitir_futuro=False). - No
     permite fechas de más de 80 años de antigüedad.
     """
+    if anos_max_antiguedad is not None and anos_max_antiguedad < 0:
+        raise ValueError("La antigüedad máxima no puede ser negativa.")
+    if fecha_min is not None and fecha_max is not None and fecha_min > fecha_max:
+        raise ValueError("La fecha mínima no puede ser posterior a la fecha máxima.")
+
     hoy = date.today()
 
     # Configuración de fecha máxima (hoy por defecto si no se permite futuro)
